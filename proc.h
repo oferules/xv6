@@ -56,3 +56,15 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+
+/// variables constants
+#define MAX_VARIABLES 32
+#define MAX_VAR_NAME 32
+#define MAX_VAR_VALUE 100
+
+/// variable struct
+struct variable {
+  char name[MAX_VAR_NAME];      // variable name
+  char value[MAX_VAR_VALUE];    // variable value
+};

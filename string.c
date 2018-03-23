@@ -55,6 +55,25 @@ memcpy(void *dst, const void *src, uint n)
   return memmove(dst, src, n);
 }
 
+char*
+strcpy(char *s, char *t)
+{
+  char *os;
+
+  os = s;
+  while((*s++ = *t++) != 0)
+    ;
+  return os;
+}
+
+int
+strcmp(const char *p, const char *q)
+{
+  while(*p && *p == *q)
+    p++, q++;
+  return (uchar)*p - (uchar)*q;
+}
+
 int
 strncmp(const char *p, const char *q, uint n)
 {

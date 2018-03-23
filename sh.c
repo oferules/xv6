@@ -227,16 +227,7 @@ HandleCmd(char* buf){
 
 int
 main(void)
-{
-    
-    char var[32];
-    char value[100];
-    var[0]='v';
-    var[1]=0;
-    value[0]='r';
-    value[1]=0;
-    
-    printf(1,"%d",setVariable(var,value));
+{  
   static char buf[MAX_BUF_SIZE];
   int fd;
 

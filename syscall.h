@@ -22,5 +22,5 @@
 #define SYS_close  21
 #define SYS_yield  22
 #define SYS_setVariable 23
-#define SYS_getvar 24
-#define SYS_remvar 25
+#define SYS_getVariable 24
+#define SYS_remVariable 25

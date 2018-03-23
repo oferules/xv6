@@ -110,7 +110,7 @@ sys_setVariable(void)
 }
 
 int
-sys_getvar(void)
+sys_getVariable(void)
 {
   char * var;
   char * value;
@@ -120,7 +120,7 @@ sys_getvar(void)
 }
 
 int
-sys_remvar(void)
+sys_remVariable(void)
 {
   char * var;
   if(argptr(0, &var, 32) < 0)

@@ -12,6 +12,13 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+
+/// variables table
+struct {
+  struct spinlock lock;
+  struct variable variable[MAX_VARIABLES];
+} vartable;
+
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -24,6 +31,22 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+}
+
+/// initialize var table
+void
+varinit(void)
+{
+    initlock(&vartable.lock, "vartable");
+    
+    /// mark all places in the variable table as free
+    struct variable *v;
+    acquire(&vartable.lock);
+    for(v = vartable.variable; v < &vartable.variable[MAX_VARIABLES]; v++){
+        v->name[0]=0;    
+    }
+    release(&vartable.lock);
+    
 }
 
 // Must be called with interrupts disabled
@@ -537,14 +560,65 @@ procdump(void)
 /// variables
 int setVariable(char* var, char* value)
 {
-    cprintf("%s %s",var, value);
-    return 0;
+    /// check var name contains only english letters
+    int i;
+    for (i=0;i<strlen(var);i++){
+        if (!((var[i]>='a' && var[i]<='z') || (var[i]>='A' && var[i]<='Z'))){
+            return -2;
+        }
+    }
+
+    /// create a pointer to iterate over var table
+    struct variable *v;
+
+    acquire(&vartable.lock);
+    for(v = vartable.variable; v < &vartable.variable[MAX_VARIABLES]; v++){
+        if(v->name[0] == 0){
+            /// found free space
+            strcpy(v->name,var);
+            strcpy(v->value,value);
+            release(&vartable.lock);
+            return 0;
+        }
+    }
+    release(&vartable.lock);
+    /// No room for additional variables
+    return -1;
 }
 
 int getVariable(char* var, char* value){
-    return 0;
+    
+    /// create a pointer to iterate over var table
+    struct variable *v;
+
+    acquire(&vartable.lock);
+    for(v = vartable.variable; v < &vartable.variable[MAX_VARIABLES]; v++){
+        if(strcmp(var,v->name)==0){
+            /// found a value for the requested var
+            strcpy(value,v->value);
+            release(&vartable.lock);
+            return 0;
+        }
+    }
+    release(&vartable.lock);
+    /// the requested var not found in the table
+    return -1;
 }
 
 int remVariable(char* var){
-    return 0;
+    /// create a pointer to iterate over var table
+    struct variable *v;
+
+    acquire(&vartable.lock);
+    for(v = vartable.variable; v < &vartable.variable[MAX_VARIABLES]; v++){
+        if(strcmp(var,v->name)==0){
+            /// found a value for the requested var, remove it
+            v->name[0]=0;
+            release(&vartable.lock);
+            return 0;
+        }
+    }
+    release(&vartable.lock);
+    /// the requested var not found in the table
+    return -1;
 }
