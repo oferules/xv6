@@ -182,6 +182,40 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
+void
+HandleCmd(char* buf){
+  addToHistory(buf);
+  if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
+      // Chdir must be called by the parent, not the child.
+      buf[strlen(buf)-1] = 0;  // chop \n
+      if(chdir(buf+3) < 0)
+        printf(2, "cannot cd %s\n", buf+3);
+      return;
+    }
+    /// support history
+    if(buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 't' && buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y'){
+        /// history must be called by the parent, not the child.
+        if(buf[7] == '\n'){
+            printHistory();
+        }
+        else if(buf[7] == ' ' && buf[8] == '-' && buf[9] == 'l' && buf[10] == ' ')
+        {
+            int index = atoi(buf+11);
+            char cmdText[100];
+            strcpy(cmdText, getFromHistory(index));
+            HandleCmd(cmdText);
+        }
+        else
+        {
+            printf(2, "cannot history %s\n", buf+7);
+        }
+      return;
+    }
+    if(fork1() == 0)
+      runcmd(parsecmd(buf));
+    wait();
+}
+
 int
 main(void)
 {
@@ -198,27 +232,7 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
-    if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
-      // Chdir must be called by the parent, not the child.
-      buf[strlen(buf)-1] = 0;  // chop \n
-      if(chdir(buf+3) < 0)
-        printf(2, "cannot cd %s\n", buf+3);
-      continue;
-    }
-    /// support history
-    if(buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 't' && buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y'){
-        /// history must be called by the parent, not the child.
-        if(buf[7] == '\n'){
-            /// print the history
-        }
-        else {
-            
-        }
-      continue;
-    }
-    if(fork1() == 0)
-      runcmd(parsecmd(buf));
-    wait();
+    HandleCmd(buf)
   }
   exit();
 }
