@@ -159,7 +159,9 @@ HandleCmd(char* buf){
         else if(buf[7] == ' ' && buf[8] == '-' && buf[9] == 'l' && buf[10] == ' ')
         {
             int index = atoi(buf+11);
-            getFromHistory(index);
+            char cmdText[100];
+            strcpy(cmdText, getFromHistory(index));
+            HandleCmd(cmdText);
         }
         else
         {
