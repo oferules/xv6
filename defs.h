@@ -120,10 +120,12 @@ void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
+void            wakeup2(void*);
 void            yield(void);
 int             setVariable(char*, char*);
 int             getVariable(char*, char*);
 int             remVariable(char*);
+int             wait2(int, int*, int*, int*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

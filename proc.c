@@ -135,6 +135,13 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  /// set times
+  acquire(&tickslock);
+  p->ctime = ticks;
+  release(&tickslock);
+  p->rtime = 0;
+  p->iotime = 0;
+  p->etime = 0;
   return p;
 }
 
@@ -284,6 +291,11 @@ exit(void)
     }
   }
 
+  /// update end time
+  acquire(&tickslock);
+  curproc->etime = ticks;
+  release(&tickslock);
+
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
   sched();
@@ -330,6 +342,54 @@ wait(void)
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int
+wait2(int pid, int* wtime, int* rtime, int* iotime)
+{
+  struct proc *p;
+  struct proc *curproc = myproc();
+  int found = 0;
+  
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for pid.
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->pid != pid)
+        continue;
+
+      found = 1;
+      if(p->state == ZOMBIE){
+        /// return process times
+        wtime[0] = p->etime - p->ctime - p->iotime - p->rtime;
+        rtime[0] = p->rtime;
+        iotime[0] = p->iotime;
+
+        // Found one.
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        release(&ptable.lock);
+        return 0;
+      }
+    }
+
+    // No point waiting if pid does not exists
+    if(!found || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for pid to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
@@ -496,6 +556,33 @@ wakeup(void *chan)
   release(&ptable.lock);
 }
 
+/// Wake up all processes sleeping on chan.
+/// and update IO, running time for all proccesses
+void
+wakeup2(void *chan)
+{
+  acquire(&ptable.lock);
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == SLEEPING){
+      if(p->chan == chan){
+        p->state = RUNNABLE;
+      } 
+      else
+      {
+        p->iotime++;
+      }
+    }
+
+    if(p->state == RUNNING){
+        p->rtime++;
+    }
+  }
+
+  release(&ptable.lock);
+}
+
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
@@ -644,6 +731,5 @@ int remVariable(char* var){
     /// the requested var not found in the table
     return -1;
 }
-
 
 

@@ -127,3 +127,16 @@ sys_remVariable(void)
     return -3;
   return remVariable(var);
 }
+
+int
+sys_wait2(void)
+{
+  int pid;
+  int* wtime;
+  int* rtime;
+  int* iotime;
+
+  if(argint(0, &pid) < 0 || argptr(1, (char**) &wtime, 4) < 0 || argptr(2, (char**) &rtime, 4) < 0 || argptr(3, (char**) &iotime, 4) < 0)
+    return -3;
+  return wait2(pid, wtime, rtime, iotime);
+}

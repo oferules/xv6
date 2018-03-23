@@ -209,7 +209,7 @@ HandleCmd(char* buf){
   int correctedBufIndex = 0;
 
   /// get var values
-  for(i = 0; i <= strlen(buf) ; i++){
+  for(i = 0; i < strlen(buf) ; i++){
     if(buf[i] == '$'){
       i++;
       int startVarIndex = i;
