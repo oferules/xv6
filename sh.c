@@ -13,6 +13,7 @@
 
 #define MAXARGS 10
 #define MAX_HISTORY 16
+#define MAX_VAR_SIZE 32
 #define MAX_BUF_SIZE 100
 
 struct cmd {
@@ -186,25 +187,122 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
+char
+IsEndOfVar(char c){
+  return c == 0 || c == ' ' || c == '\n' || c == '$';
+}
+
+char
+IsCharValidVar(char c){
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
 void
 HandleCmd(char* buf){
   addToHistory(buf);
-  if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
+  ///will contain the command after replacing $var with value
+  char correctedBuf[MAX_BUF_SIZE];
+  char varName[MAX_VAR_SIZE];
+  char varValue[MAX_BUF_SIZE];
+  int i;
+  int j;
+  int correctedBufIndex = 0;
+
+  /// get var values
+  for(i = 0; i < strlen(buf) ; i++){
+    if(buf[i] == '$'){
+      i++;
+      int startVarIndex = i;
+      while(!IsEndOfVar(buf[i])){
+        if(!IsCharValidVar(buf[i])){
+          printf(2, "invalid variable\n");
+          return;
+        }
+
+        /// check if var name is too long
+        if(i - startVarIndex >= MAX_VAR_SIZE){
+          printf(2, "variable too long\n");
+          return;
+        }
+
+        varName[i - startVarIndex] = buf[i];
+        i++;
+      }
+
+      varName[i] = 0;
+
+      /// get Value
+      if(getVariable(varName, varValue) == 0){
+        int valueLength = strlen(varValue);
+
+        /// copy value into corrected buffer
+        for(j = 0; j < valueLength ; j++){
+          correctedBuf[correctedBufIndex++] = varValue[j];
+        }
+      }
+      else
+      {
+        printf(2, "variable not found\n");
+        return;
+      }
+    }
+    else
+    {
+      correctedBuf[correctedBufIndex++] = buf[i];
+    }
+  }
+
+  /// set var value
+  for(i = 0 ; i < MAX_BUF_SIZE ; i++){
+    if(correctedBuf[i] == '\n'){
+      break;
+    }
+
+    if(correctedBuf[i] == '='){
+      if(i == 0){
+        printf(2, "no variable name\n");
+        return;
+      }
+
+      if(i >= MAX_VAR_SIZE){
+        printf(2, "variable too long\n");
+        return;
+      }
+
+      correctedBuf[i] = 0;
+      correctedBuf[strlen(correctedBuf)-1] = 0;
+                                /// var         value
+      int setVarRet = setVariable(correctedBuf, correctedBuf + i + 1);
+      if(setVarRet == -1){
+        printf(2, "no room for aditional variables\n");
+      }
+
+      if(setVarRet == -2){
+        printf(2, "input is illegal\n");
+      }
+
+      return;
+    }
+  }
+
+  if(correctedBuf[0] == 'c' && correctedBuf[1] == 'd' && correctedBuf[2] == ' '){
       // Chdir must be called by the parent, not the child.
-      buf[strlen(buf)-1] = 0;  // chop \n
-      if(chdir(buf+3) < 0)
-        printf(2, "cannot cd %s\n", buf+3);
+      correctedBuf[strlen(correctedBuf)-1] = 0;  // chop \n
+      if(chdir(correctedBuf+3) < 0)
+        printf(2, "cannot cd %s\n", correctedBuf+3);
       return;
     }
     /// support history
-    if(buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 't' && buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y'){
+    if(correctedBuf[0] == 'h' && correctedBuf[1] == 'i' && correctedBuf[2] == 's' && correctedBuf[3] == 't' && correctedBuf[4] == 'o' && correctedBuf[5] == 'r' && correctedBuf[6] == 'y'){
         /// history must be called by the parent, not the child.
-        if(buf[7] == '\n'){
+        if(correctedBuf[7] == '\n'){
+          /// print total history
             printHistory();
         }
-        else if(buf[7] == ' ' && buf[8] == '-' && buf[9] == 'l' && buf[10] == ' ')
+        else if(correctedBuf[7] == ' ' && correctedBuf[8] == '-' && correctedBuf[9] == 'l' && correctedBuf[10] == ' ')
         {
-            int index = atoi(buf+11);
+          /// run history at index
+            int index = atoi(correctedBuf+11);
             char cmdText[MAX_BUF_SIZE];
             char* fromHistory = getFromHistory(index);
             if(fromHistory == 0){
@@ -212,16 +310,18 @@ HandleCmd(char* buf){
                 return;
             }
             strcpy(cmdText,fromHistory);
+            /// run the command
             HandleCmd(cmdText);
         }
         else
         {
-            printf(2, "cannot history %s\n", buf+7);
+            /// bad args to history
+            printf(2, "cannot history %s\n", correctedBuf+7);
         }
       return;
     }
     if(fork1() == 0)
-      runcmd(parsecmd(buf));
+      runcmd(parsecmd(correctedBuf));
     wait();
 }
 
