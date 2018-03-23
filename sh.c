@@ -229,7 +229,8 @@ HandleCmd(char* buf){
         i++;
       }
 
-      varName[i] = 0;
+      varName[i - startVarIndex] = 0;
+      
 
       /// get Value
       if(getVariable(varName, varValue) == 0){
@@ -239,6 +240,8 @@ HandleCmd(char* buf){
         for(j = 0; j < valueLength ; j++){
           correctedBuf[correctedBufIndex++] = varValue[j];
         }
+        
+        i--;
       }
       else
       {
@@ -269,10 +272,12 @@ HandleCmd(char* buf){
         return;
       }
 
-      correctedBuf[i] = 0;
       correctedBuf[strlen(correctedBuf)-1] = 0;
-                                /// var         value
+      correctedBuf[i] = 0;
+      
+      /// var         value
       int setVarRet = setVariable(correctedBuf, correctedBuf + i + 1);
+      
       if(setVarRet == -1){
         printf(2, "no room for aditional variables\n");
       }

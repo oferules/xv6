@@ -557,7 +557,17 @@ procdump(void)
 }
 
 
-/// variables
+/// global variables
+
+void printVarTable(){
+    struct variable *v;
+    cprintf("global variables:\n");
+    for(v = vartable.variable; v < &vartable.variable[MAX_VARIABLES]; v++){
+        if (v->name[0]!=0)
+            cprintf("var: %s, value: %s\n", v->name, v->value);
+    }
+}
+
 int setVariable(char* var, char* value)
 {
     /// check var name contains only english letters
@@ -577,10 +587,12 @@ int setVariable(char* var, char* value)
             /// found free space
             strcpy(v->name,var);
             strcpy(v->value,value);
+            printVarTable();
             release(&vartable.lock);
             return 0;
         }
     }
+    printVarTable();
     release(&vartable.lock);
     /// No room for additional variables
     return -1;
@@ -596,10 +608,12 @@ int getVariable(char* var, char* value){
         if(strcmp(var,v->name)==0){
             /// found a value for the requested var
             strcpy(value,v->value);
+            printVarTable();
             release(&vartable.lock);
             return 0;
         }
     }
+    printVarTable();
     release(&vartable.lock);
     /// the requested var not found in the table
     return -1;
@@ -622,3 +636,6 @@ int remVariable(char* var){
     /// the requested var not found in the table
     return -1;
 }
+
+
+
