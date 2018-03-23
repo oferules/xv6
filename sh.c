@@ -12,6 +12,7 @@
 #define BACK  5
 
 #define MAXARGS 10
+#define MAX_HISTORY 16
 
 struct cmd {
   int type;
@@ -52,6 +53,46 @@ struct backcmd {
 int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
+
+/// history buf
+char history[100*MAX_HISTORY];
+int historycounter=0;
+
+/// add command to history
+void
+addToHistory (char* buf)
+{
+    int index= historycounter%MAX_HISTORY;
+    strcpy(history+(index*100),buf);
+    historycounter++;
+}
+
+/// get command from history
+char*
+getFromHistory (int index)
+{
+    index--;
+    if (historycounter <= MAX_HISTORY){
+        return history + (index*100);
+    }
+    else {
+        return history + ((historycounter+index)%MAX_HISTORY)*100;
+    }
+}
+
+/// print history
+void
+printHistory()
+{
+    int n=historycounter;
+    if (n>16)
+        n=16;
+    int i;
+    for(i=1; i<=n ; i++){
+        printf(1,"%d. %s",i,getFromHistory(i));
+    }  
+}
+
 
 // Execute cmd.  Never returns.
 void
