@@ -71,6 +71,9 @@ addToHistory (char* buf)
 char*
 getFromHistory (int index)
 {
+    if (index < 1 || index > 16){
+        return 0;
+    }
     index--;
     if (historycounter <= MAX_HISTORY){
         return history + (index*100);
@@ -202,7 +205,12 @@ HandleCmd(char* buf){
         {
             int index = atoi(buf+11);
             char cmdText[100];
-            strcpy(cmdText, getFromHistory(index));
+            char* fromHistory = getFromHistory(index);
+            if(fromHistory == 0){
+                printf(2,"error: invalid hisotry index\n");
+                return;
+            }
+            strcpy(cmdText,fromHistory);
             HandleCmd(cmdText);
         }
         else
@@ -232,7 +240,7 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
-    HandleCmd(buf)
+    HandleCmd(buf);
   }
   exit();
 }
