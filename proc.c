@@ -582,17 +582,27 @@ int setVariable(char* var, char* value)
     struct variable *v;
 
     acquire(&vartable.lock);
+    
+    /// Check if this variable already exist
+    for(v = vartable.variable; v < &vartable.variable[MAX_VARIABLES]; v++){
+        if(strcmp(var,v->name)==0){
+            /// found a value for the requested var, override the value
+            strcpy(v->value,value);
+            release(&vartable.lock);
+            return 0;
+        }
+    }
+    
+    /// check for free space
     for(v = vartable.variable; v < &vartable.variable[MAX_VARIABLES]; v++){
         if(v->name[0] == 0){
             /// found free space
             strcpy(v->name,var);
             strcpy(v->value,value);
-            printVarTable();
             release(&vartable.lock);
             return 0;
         }
     }
-    printVarTable();
     release(&vartable.lock);
     /// No room for additional variables
     return -1;
@@ -608,12 +618,10 @@ int getVariable(char* var, char* value){
         if(strcmp(var,v->name)==0){
             /// found a value for the requested var
             strcpy(value,v->value);
-            printVarTable();
             release(&vartable.lock);
             return 0;
         }
     }
-    printVarTable();
     release(&vartable.lock);
     /// the requested var not found in the table
     return -1;
