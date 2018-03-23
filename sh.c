@@ -13,6 +13,7 @@
 
 #define MAXARGS 10
 #define MAX_HISTORY 16
+#define MAX_BUF_SIZE 100
 
 struct cmd {
   int type;
@@ -55,7 +56,7 @@ void panic(char*);
 struct cmd *parsecmd(char*);
 
 /// history buf
-char history[100*MAX_HISTORY];
+char history[MAX_BUF_SIZE*MAX_HISTORY];
 int historycounter=0;
 
 /// add command to history
@@ -63,7 +64,7 @@ void
 addToHistory (char* buf)
 {
     int index= historycounter%MAX_HISTORY;
-    strcpy(history+(index*100),buf);
+    strcpy(history+(index*MAX_BUF_SIZE),buf);
     historycounter++;
 }
 
@@ -76,10 +77,10 @@ getFromHistory (int index)
     }
     index--;
     if (historycounter <= MAX_HISTORY){
-        return history + (index*100);
+        return history + (index*MAX_BUF_SIZE);
     }
     else {
-        return history + ((historycounter+index)%MAX_HISTORY)*100;
+        return history + ((historycounter+index)%MAX_HISTORY)*MAX_BUF_SIZE;
     }
 }
 
@@ -204,7 +205,7 @@ HandleCmd(char* buf){
         else if(buf[7] == ' ' && buf[8] == '-' && buf[9] == 'l' && buf[10] == ' ')
         {
             int index = atoi(buf+11);
-            char cmdText[100];
+            char cmdText[MAX_BUF_SIZE];
             char* fromHistory = getFromHistory(index);
             if(fromHistory == 0){
                 printf(2,"error: invalid hisotry index\n");
@@ -227,7 +228,7 @@ HandleCmd(char* buf){
 int
 main(void)
 {
-  static char buf[100];
+  static char buf[MAX_BUF_SIZE];
   int fd;
 
   // Ensure that three file descriptors are open.
