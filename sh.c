@@ -164,6 +164,17 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
+    /// support history
+    if(buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 't' && buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y'){
+        /// history must be called by the parent, not the child.
+        if(buf[7] == '\n'){
+            /// print the history
+        }
+        else {
+            
+        }
+      continue;
+    }
     if(fork1() == 0)
       runcmd(parsecmd(buf));
     wait();
