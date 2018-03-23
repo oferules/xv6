@@ -120,6 +120,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             setVariable(char*, char*);
+int             getVariable(char*, char*);
+int             remVariable(char*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

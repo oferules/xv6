@@ -96,3 +96,34 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+int
+sys_setVariable(void)
+{
+  char * var;
+  char * value;
+  if(argptr(0, &var, 32) < 0 || argptr(1, &value, 100) < 0 )
+    ///TODO check retrun value
+    return -3;
+  return setVariable(var,value);
+}
+
+int
+sys_getvar(void)
+{
+  char * var;
+  char * value;
+  if(argptr(0, &var, 32) < 0 || argptr(1, &value, 100) < 0 )
+    return -3;
+  return getVariable(var,value);
+}
+
+int
+sys_remvar(void)
+{
+  char * var;
+  if(argptr(0, &var, 32) < 0)
+    return -3;
+  return remVariable(var);
+}

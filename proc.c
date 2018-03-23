@@ -532,3 +532,19 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+/// variables
+int setVariable(char* var, char* value)
+{
+    cprintf("%s %s",var, value);
+    return 0;
+}
+
+int getVariable(char* var, char* value){
+    return 0;
+}
+
+int remVariable(char* var){
+    return 0;
+}
