@@ -126,6 +126,7 @@ int             setVariable(char*, char*);
 int             getVariable(char*, char*);
 int             remVariable(char*);
 int             wait2(int, int*, int*, int*);
+int             set_priority(int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

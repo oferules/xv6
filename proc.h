@@ -56,6 +56,7 @@ struct proc {
   int iotime;                  /// I/O time
   int rtime;                   /// running time
   int turn;                    /// proc turn for FCFS policy
+  int priority;                 /// process priority
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -64,11 +65,6 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
-
-/// variables constants
-#define MAX_VARIABLES 32
-#define MAX_VAR_NAME 32
-#define MAX_VAR_VALUE 100
 
 /// variable struct
 struct variable {

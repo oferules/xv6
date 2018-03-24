@@ -13,3 +13,9 @@
 #define FSSIZE       1000  // size of file system in blocks
 #define QUANTUM 	 5 	 /// number of clock ticks between sched swap
 #define ALPHA      0.5 /// alpha for SRT
+#define MIN_PRIORITY    1 /// minimum priority of a process
+#define MAX_PRIORITY    3 /// maximum priority of a process
+/// variables constants
+#define MAX_VARIABLES 32 /// global variables capcity
+#define MAX_VAR_NAME 32  /// maimum length of variable name
+#define MAX_VAR_VALUE 100  // maximum length of variable 

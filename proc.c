@@ -193,6 +193,9 @@ userinit(void)
 
   p->state = RUNNABLE;
 
+  /// set start priority as normal
+  p->priority=2;
+  
   release(&ptable.lock);
 }
 
@@ -241,6 +244,8 @@ fork(void)
   }
   np->sz = curproc->sz;
   np->parent = curproc;
+  /// copy parent priority
+  np->priority = curproc->priority;
   *np->tf = *curproc->tf;
 
   // Clear %eax so that fork returns 0 in the child.
@@ -541,8 +546,74 @@ void SRTScheduler(void){
   }
 }
 
-void CFSDScheduler(void){
+float calcRatio(struct proc* p)
+{
+    if (p->rtime==0){
+        return 0.0;
+    }
+    
+    float decayFactor = ((float)(p -> priority) + 2.0)/4.0;
+    int wtime= ticks - p->ctime - p->rtime - p->iotime ;         
+    return  ((float)(p->rtime)*decayFactor)/((float)(p->rtime) + (float)wtime);
+}
 
+void CFSDScheduler(void){
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+    struct proc *minProc = 0;
+    float minRatio=0.0;
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    
+        if(p->state != RUNNABLE)
+          continue;
+        if(minProc == 0){
+          minProc = p;
+          minRatio = calcRatio(p);
+        }
+        else{
+          float ratio=calcRatio(p);
+          if (ratio < minRatio){
+            minRatio=ratio;
+            minProc=p;
+          }
+        }
+    }
+
+    if (minProc==0){
+        /// no runnable process
+        release(&ptable.lock);
+        continue;
+    }
+    
+    p = minProc;
+
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
+
+    /// current session start of running
+    p->currrtime=ticks;
+      
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    
+    release(&ptable.lock);
+
+  }
 }
 
 //PAGEBREAK: 42
@@ -897,6 +968,15 @@ int remVariable(char* var){
     release(&vartable.lock);
     /// the requested var not found in the table
     return -1;
+}
+
+int set_priority(int priority)
+{
+    if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
+        return -1;
+    
+    myproc()->priority=priority;
+    return 0;
 }
 
 
