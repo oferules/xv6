@@ -12,9 +12,9 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+/// turn counter and turn lock for FCFS policiy
 #ifdef FCFS
 int turnCounter = 0;
-struct turnlock lock;
 #endif
 
 /// variables table
@@ -35,9 +35,6 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
-  #ifdef FCFS
-  initlock(&turnlock.lock, "turnCounter");
-  #endif
 }
 
 /// initialize var table
@@ -119,6 +116,11 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+  /// when a new proccess is created in FCFS, it needs a turn
+  #ifdef FCFS
+  p->turn = turnCounter++;
+  #endif
+  
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -143,19 +145,10 @@ found:
   p->context->eip = (uint)forkret;
 
   /// set times
-  acquire(&tickslock);
   p->ctime = ticks;
-  release(&tickslock);
   p->rtime = 0;
   p->iotime = 0;
   p->etime = 0;
-
-  /// when a new proccess is created in FCFS, it needs a turn
-  #ifdef FCFS
-  acquire(&turnlock);
-  p->turn = turnCounter++;
-  release(&turnlock);
-  #endif
 
   return p;
 }
@@ -307,9 +300,7 @@ exit(void)
   }
 
   /// update end time
-  acquire(&tickslock);
   curproc->etime = ticks;
-  release(&tickslock);
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
@@ -429,7 +420,10 @@ void DefaultScheduler(void){
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
+        
+      /// current session start of running
+      p->currrtime=ticks;
+      
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -461,21 +455,30 @@ void FCFSScheduler(void){
         }
     }
 
+    if (minProc==0){
+        /// no runnable process
+        release(&ptable.lock);
+        continue;
+    }
+    
     p = minProc;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+    /// current session start of running
+    p->currrtime=ticks;
+      
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
     
     release(&ptable.lock);
 
@@ -549,14 +552,14 @@ sched(void)
 void
 yield(void)
 {
-  #ifdef FCFS
-  acquire(&turnlock);
-  p->turn = turnCounter++;
-  release(&turnlock);
-  #endif
-
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  
+  /// when a process yield in FCFS it goes to the end of the line
+  #ifdef FCFS
+  myproc()->turn = turnCounter++;
+  #endif
+  
   sched();
   release(&ptable.lock);
 }
@@ -633,9 +636,7 @@ wakeup1(void *chan)
     if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
       #ifdef FCFS
-      acquire(&turnlock);
       p->turn = turnCounter++;
-      release(&turnlock);
       #endif
     }
 }
@@ -662,9 +663,7 @@ wakeup2(void *chan)
       if(p->chan == chan){
         p->state = RUNNABLE;
         #ifdef FCFS
-        acquire(&turnlock);
         p->turn = turnCounter++;
-        release(&turnlock);
         #endif
       } 
       else
