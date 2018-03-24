@@ -53,6 +53,7 @@ struct proc {
   int etime;                   /// end time
   int iotime;                  /// I/O time
   int rtime;                   /// running time
+  int turn;                    /// proc turn for FCFS policy
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -12,6 +12,10 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+#ifdef FCFS
+int turnCounter = 0;
+struct turnlock lock;
+#endif
 
 /// variables table
 struct {
@@ -31,6 +35,9 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  #ifdef FCFS
+  initlock(&turnlock.lock, "turnCounter");
+  #endif
 }
 
 /// initialize var table
@@ -142,6 +149,14 @@ found:
   p->rtime = 0;
   p->iotime = 0;
   p->etime = 0;
+
+  /// when a new proccess is created in FCFS, it needs a turn
+  #ifdef FCFS
+  acquire(&turnlock);
+  p->turn = turnCounter++;
+  release(&turnlock);
+  #endif
+
   return p;
 }
 
@@ -394,17 +409,7 @@ wait2(int pid, int* wtime, int* rtime, int* iotime)
   }
 }
 
-//PAGEBREAK: 42
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
-//  - eventually that process transfers control
-//      via swtch back to the scheduler.
-void
-scheduler(void)
-{
+void DefaultScheduler(void){
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
@@ -412,13 +417,12 @@ scheduler(void)
   for(;;){
     // Enable interrupts on this processor.
     sti();
-
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-
+        if(p->state != RUNNABLE)
+          continue;
+   
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -434,8 +438,85 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
+  }
+}
+
+void FCFSScheduler(void){
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+    struct proc *minProc = 0;
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    
+        if(p->state != RUNNABLE)
+          continue;
+        if(minProc == 0 || p->turn < minProc->turn){
+          minProc = p;
+        }
+    }
+
+    p = minProc;
+
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+    
+    release(&ptable.lock);
 
   }
+}
+
+void SRTScheduler(void){
+
+}
+
+void CFSDScheduler(void){
+
+}
+
+//PAGEBREAK: 42
+// Per-CPU process scheduler.
+// Each CPU calls scheduler() after setting itself up.
+// Scheduler never returns.  It loops, doing:
+//  - choose a process to run
+//  - swtch to start running that process
+//  - eventually that process transfers control
+//      via swtch back to the scheduler.
+void
+scheduler(void)
+{
+  #ifdef DEFAULT
+    DefaultScheduler();
+  #else
+  #ifdef FCFS
+    FCFSScheduler();
+  #else
+  #ifdef SRT
+    SRTScheduler();
+  #else
+  #ifdef CFSD
+    CFSDScheduler();
+  #endif
+  #endif
+  #endif
+  #endif  
+  for(;;){}
 }
 
 // Enter scheduler.  Must hold only ptable.lock
@@ -468,6 +549,12 @@ sched(void)
 void
 yield(void)
 {
+  #ifdef FCFS
+  acquire(&turnlock);
+  p->turn = turnCounter++;
+  release(&turnlock);
+  #endif
+
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();
@@ -543,8 +630,14 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+      #ifdef FCFS
+      acquire(&turnlock);
+      p->turn = turnCounter++;
+      release(&turnlock);
+      #endif
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -568,6 +661,11 @@ wakeup2(void *chan)
     if(p->state == SLEEPING){
       if(p->chan == chan){
         p->state = RUNNABLE;
+        #ifdef FCFS
+        acquire(&turnlock);
+        p->turn = turnCounter++;
+        release(&turnlock);
+        #endif
       } 
       else
       {
