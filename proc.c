@@ -120,6 +120,11 @@ found:
   #ifdef FCFS
   p->turn = turnCounter++;
   #endif
+
+  /// when a new proccess is created in SRT, quantum is the initial apxtime
+  #ifdef SRT
+  p->apxtime = (float) QUANTUM;
+  #endif
   
   release(&ptable.lock);
 
@@ -486,7 +491,54 @@ void FCFSScheduler(void){
 }
 
 void SRTScheduler(void){
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+    struct proc *minProc = 0;
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    
+        if(p->state != RUNNABLE)
+          continue;
+        if(minProc == 0 || p->apxtime < minProc->apxtime){
+          minProc = p;
+        }
+    }
 
+    if (minProc==0){
+        /// no runnable process
+        release(&ptable.lock);
+        continue;
+    }
+    
+    p = minProc;
+
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+
+    switchuvm(p);
+    p->state = RUNNING;
+
+    /// current session start of running
+    p->currrtime=ticks;
+      
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    
+    release(&ptable.lock);
+
+  }
 }
 
 void CFSDScheduler(void){
@@ -558,6 +610,12 @@ yield(void)
   /// when a process yield in FCFS it goes to the end of the line
   #ifdef FCFS
   myproc()->turn = turnCounter++;
+  #endif
+
+  #ifdef SRT
+  if(myproc()->rtime > myproc()->apxtime){
+    myproc()->apxtime = myproc()->apxtime *((float)1.0 + ALPHA);
+  }
   #endif
   
   sched();
@@ -638,6 +696,12 @@ wakeup1(void *chan)
       #ifdef FCFS
       p->turn = turnCounter++;
       #endif
+
+      #ifdef SRT
+      if(p->rtime > p->apxtime){
+        p->apxtime = p->apxtime *((float)1.0 + ALPHA);
+      }
+      #endif
     }
 }
 
@@ -664,6 +728,12 @@ wakeup2(void *chan)
         p->state = RUNNABLE;
         #ifdef FCFS
         p->turn = turnCounter++;
+        #endif
+
+        #ifdef SRT
+        if(p->rtime > p->apxtime){
+          p->apxtime = p->apxtime *((float)1.0 + ALPHA);
+        }
         #endif
       } 
       else
