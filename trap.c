@@ -101,9 +101,8 @@ trap(struct trapframe *tf)
     exit();
 
   /// only preemptive policies yield the process after quantum
-  #ifdef DEFAULT
-  #ifdef SRT
-  #ifdef CFSD
+  #if defined(DEFAULT) || defined(SRT) || defined(CFSD)
+
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
@@ -112,8 +111,6 @@ trap(struct trapframe *tf)
       yield();
   }
 
-  #endif
-  #endif
   #endif
 
   // Check if the process has been killed since we yielded
